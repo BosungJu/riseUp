@@ -579,11 +579,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: af9bfafc94815ea4d93c359f18194348, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  Ease: 24
+  Ease: 23
   _LoopType: 1
   IsRepeat: 0
   IsPause: 0
-  RepeatTime: 0.3
+  RepeatTime: 0.45
 --- !u!114 &2093179838
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -601,7 +601,7 @@ MonoBehaviour:
   blockedRight: {fileID: 8000512475008246279, guid: fa92f90c22cb33d42bc6bece0d79b8cf, type: 3}
   blockedNone: {fileID: 1628577913423627820, guid: 729978a33ad9a554c8d67f3438cf62d0, type: 3}
   tween: {fileID: 2093179837}
-  jumpTime: 0.3
+  jumpTime: 0.45
   data: {fileID: 11400000, guid: 9a35bf76cad5bf14d8842b63da036904, type: 2}
 --- !u!1001 &2099305113
 PrefabInstance:

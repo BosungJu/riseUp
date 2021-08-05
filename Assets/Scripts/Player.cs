@@ -52,7 +52,7 @@ public class Player : MonoBehaviour
 
     void LateUpdate()
     {
-        if (GameManager.Instance.isPlay) { transform.Translate(direction * speed * Time.deltaTime * 5); }
+        if (GameManager.Instance.isPlay) { transform.Translate(direction * speed * Time.deltaTime * 2); }
     }
 
     private void OnCollisionEnter2D(Collision2D collision)
