@@ -54,6 +54,4 @@ public class Data : ScriptableObject
 
     public Action jumpStartEvent;
     public Action jumpEndEvent;
-    public Action gameStartEvent;
-    public Action gameEndEvent;
 }

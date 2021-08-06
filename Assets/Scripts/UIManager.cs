@@ -29,14 +29,14 @@ public class UIManager : MonoBehaviour
     {
         data.countUpEvent += (x) => count.text = x.ToString();
         data.levelUpEvent += ChangeBackgroundColor;
-        data.gameStartEvent += () => 
+        GameManager.Instance.gameStartEvent += () => 
         {
             Debug.Log("game start");
             count.text = "0"; 
             resultPanel.SetActive(false); 
         };
 
-        data.gameEndEvent += () => 
+        GameManager.Instance.gameEndEvent += () => 
         { 
             resultPanel.SetActive(true);
             resultCount.text = "Count : " + data.count.ToString();
