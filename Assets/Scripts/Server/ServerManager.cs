@@ -5,6 +5,7 @@ using BackEnd;
 using UnityEngine.UI;
 using LitJson;
 using System;
+using Battlehub.Dispatcher;
 
 public class ServerManager : Singleton<ServerManager>
 {
@@ -15,18 +16,26 @@ public class ServerManager : Singleton<ServerManager>
 
     string updatedPW = "c8xtwbeu";
     string email = "초기화된 비밀번호 받을 이메일 주소";
+    private Action<bool, string> loginSuccessFunc = null;
 
+    public string myNickName { get; private set; } = string.Empty;
+    public string myIndate { get; private set; } = string.Empty;
+    public bool isLogin { get; private set; }
 
     protected override void Awake()
     {
         base.Awake();
         MatchServer.Instance.text.text = "시작\n";
         Backend.Initialize(HandleBackendCallback, true);
+        
     }
 
     private void Update()
     {
-        Backend.AsyncPoll();
+        if (Backend.IsInitialized == true)
+        {
+            Backend.AsyncPoll();
+        }
     }
 
     void HandleBackendCallback()
@@ -393,17 +402,68 @@ public class ServerManager : Singleton<ServerManager>
     }
 
     // 닉네임 수정
-    public void UpdateNickname()
+    public void UpdateNickname(Action<bool, string> func)
     {
         Debug.Log("-------------UpdateNickname-------------");
         if (UserDatas.NickName.Value != "")
         {
-            Debug.Log(Backend.BMember.UpdateNickname(UserDatas.NickName.Value).ToString());
+            SendQueue.Enqueue(Backend.BMember.UpdateNickname, UserDatas.NickName.Value, bro =>
+            {
+                loginSuccessFunc = func;
+                // 닉네임이 없으면 매치서버 접속이 안됨
+                if (!bro.IsSuccess())
+                {
+                    Debug.LogError("닉네임 생성 실패\n" + bro.ToString());
+                    loginSuccessFunc(false, string.Format("statusCode : {0}\nErrorCode : {1}\nMessage : {2}", bro.GetStatusCode(), bro.GetErrorCode(), bro.GetMessage()));
+                    return;
+                }
+
+                OnBackendAuthorized();
+            });
         }
         else
         {
             Debug.Log("check NicknameInput");
         }
+    }
+
+    // 유저 정보 불러오기 사전작업
+    private void OnPrevBackendAuthorized()
+    {
+        isLogin = true;
+
+        OnBackendAuthorized();
+    }
+
+    // 실제 유저 정보 불러오기
+    private void OnBackendAuthorized()
+    {
+        SendQueue.Enqueue(Backend.BMember.GetUserInfo, callback =>
+        {
+            if (!callback.IsSuccess())
+            {
+                Debug.LogError("유저 정보 불러오기 실패\n" + callback);
+                loginSuccessFunc(false, string.Format("statusCode : {0}\nErrorCode : {1}\nMessage : {2}",
+                callback.GetStatusCode(), callback.GetErrorCode(), callback.GetMessage()));
+                return;
+            }
+            Debug.Log("유저정보\n" + callback);
+
+            var info = callback.GetReturnValuetoJSON()["row"];
+            if (info["nickname"] == null)
+            {
+                //LoginUI.GetInstance().ActiveNickNameObject();
+                return;
+            }
+            myNickName = info["nickname"].ToString();
+            myIndate = info["inDate"].ToString();
+
+            if (loginSuccessFunc != null)
+            {
+                MatchServer.Instance.GetMatchList(loginSuccessFunc);
+                // loginSuccessFunc(true, string.Empty);
+            }
+        });
     }
 
     public void AUpdateNickname()
@@ -637,8 +697,37 @@ public class ServerManager : Singleton<ServerManager>
     {
         Debug.Log("-------------GuestLogin-------------");
 
-        bro = Backend.BMember.GuestLogin();
-        Debug.Log(bro);
+        Action<bool, string> func = (bool result, string error) =>
+        {
+            Dispatcher.Current.BeginInvoke(() =>
+            {
+                if (!result)
+                {
+                    Debug.Log("guest login error : " + error);
+                    return;
+                }
+            });
+        };
+
+        //bro = Backend.BMember.GuestLogin();
+
+        SendQueue.Enqueue(Backend.BMember.GuestLogin, callback => 
+        {
+            if (callback.IsSuccess())
+            {
+                Debug.Log("게스트 로그인 성공");
+                loginSuccessFunc = func;
+
+                OnPrevBackendAuthorized();
+                return;
+            }
+
+            Debug.Log("게스트 로그인 실패\n" + callback);
+            func(false, string.Format("statusCode : {0}\nErrorCode : {1}\nMessage : {2}",
+                callback.GetStatusCode(), callback.GetErrorCode(), callback.GetMessage()));
+        });
+        
+        //Debug.Log(bro);
         MatchServer.Instance.text.text += "게스트 로그인 성공\n";
     }
     public void AGuestLogin()

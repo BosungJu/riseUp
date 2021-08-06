@@ -6,9 +6,23 @@ using UnityEngine.UI;
 using LitJson;
 using System;
 using BackEnd.Tcp;
+using Battlehub.Dispatcher;
 
 public class MatchServer : Singleton<MatchServer>
 {
+    public class MatchInfo
+    {
+        public string title;                // 매칭 명
+        public string inDate;               // 매칭 inDate (UUID)
+        public MatchType matchType;         // 매치 타입
+        public MatchModeType matchModeType; // 매치 모드 타입
+        public string headCount;            // 매칭 인원
+        public bool isSandBoxEnable;        // 샌드박스 모드 (AI매칭)
+    }
+
+    public List<MatchInfo> matchInfos { get; private set; } = new List<MatchInfo>();  // 콘솔에서 생성한 매칭 카드들의 리스트
+
+
     public bool isConnectMatchServer = false;
     public bool isConnectInGameServer = false;
     public bool isSuperUser = false;
@@ -23,6 +37,8 @@ public class MatchServer : Singleton<MatchServer>
             return;
         }
 
+        isConnectMatchServer = true;
+
         BackEnd.Tcp.ErrorInfo errorInfo;
         if (!Backend.Match.JoinMatchMakingServer(out errorInfo))
         {
@@ -31,8 +47,7 @@ public class MatchServer : Singleton<MatchServer>
         else
         {
             text.text += "매치 서버 입장\n";
-            isConnectMatchServer = true;
-            Debug.Log("성공");
+            Debug.Log(errorInfo.SocketErrorCode);
         }
     }
 
@@ -68,6 +83,7 @@ public class MatchServer : Singleton<MatchServer>
 
     public void RequestMatchMaking()
     {
+        Debug.Log("RequestMatchMaking");
         if (!isConnectMatchServer)
         {
             Debug.Log("don't Connect Match Server");
@@ -76,12 +92,17 @@ public class MatchServer : Singleton<MatchServer>
             return;
         }
 
-        isConnectMatchServer = false;
+        isConnectInGameServer = false;
 
-        Backend.Match.RequestMatchMaking(BackEnd.Tcp.MatchType.Random, BackEnd.Tcp.MatchModeType.OneOnOne, Backend.Match.GetMatchList().GetInDate());
+        Debug.Log("인게임 진행");
 
+        BackendReturnObject obj =  Backend.Match.GetMatchList();
+
+        //Backend.Match.RequestMatchMaking(BackEnd.Tcp.MatchType.Random, BackEnd.Tcp.MatchModeType.OneOnOne, matchInfos[0].inDate);
+        Debug.Log("머임");
         if (isConnectInGameServer)
         {
+            Debug.Log("나감");
             Backend.Match.LeaveGameServer();
         }
     }
@@ -102,7 +123,7 @@ public class MatchServer : Singleton<MatchServer>
         if (!isConnectMatchServer)
         {
             // 접속 실패
-            Debug.Log(errInfo.Reason);
+            Debug.Log(errInfo);
         }
         else
         {
@@ -117,23 +138,29 @@ public class MatchServer : Singleton<MatchServer>
         {
             case ErrorCode.Success:
                 // 매칭 성공했을 때
+                Debug.Log("매칭 성공");
                 ProcessMatchSuccess(args);
                 break;
-            //case ErrorCode.Match_InProgress:
-            //    // 매칭 신청 성공했을 때 or 매칭 중일 때 매칭 신청을 시도했을 때
+            case ErrorCode.Match_InProgress:
+                // 매칭 신청 성공했을 때 or 매칭 중일 때 매칭 신청을 시도했을 때
+                Debug.Log("2");
+                // 매칭 신청 성공했을 때
+                if (args.Reason == string.Empty)
+                {
+                    ProcessMatchSuccess(args);
+                }
+                break;
+            case ErrorCode.InvalidOperation:
+                Debug.Log("실패");
 
-            //    // 매칭 신청 성공했을 때
-            //    if (args.Reason == string.Empty)
-            //    {
-            //        debugLog = SUCCESS_REGIST_MATCHMAKE;
-
-            //        LobbyUI.GetInstance().MatchRequestCallback(true);
-            //    }
-            //    break;
+                break;
             case ErrorCode.Match_MatchMakingCanceled:
+                Debug.Log("실패");
                 RequestMatchMaking();
                 break;
         }
+
+        Debug.Log(args.ErrInfo);
     }
 
     private void ProcessMatchSuccess(MatchMakingResponseEventArgs args)
@@ -194,7 +221,12 @@ public class MatchServer : Singleton<MatchServer>
         {
             // TODO create room
             // TODO 바로 매칭 시작
-            RequestMatchMaking();
+            Debug.Log("OnMatchMakingRoomCreate : " + args.ErrInfo + " : " + args.Reason);
+
+            if (args.ErrInfo.Equals(ErrorCode.Success))
+            {
+                RequestMatchMaking();
+            }
         };
 
         Backend.Match.OnMatchMakingResponse += (args) =>
@@ -209,6 +241,8 @@ public class MatchServer : Singleton<MatchServer>
                 Debug.Log(args.ErrInfo.Reason);
                 return;
             }
+
+            Debug.Log("game 시작");
         };
 
         Backend.Match.OnSessionListInServer += (args) =>
@@ -270,5 +304,56 @@ public class MatchServer : Singleton<MatchServer>
     private void Update()
     {
         Backend.Match.Poll();
+    }
+
+    public void GetMatchList(Action<bool, string> func)
+    {
+        // 매칭 카드 정보 초기화
+        matchInfos.Clear();
+
+        Backend.Match.GetMatchList(callback =>
+        {
+            // 요청 실패하는 경우 재요청
+            if (callback.IsSuccess() == false)
+            {
+                Debug.Log("매칭카드 리스트 불러오기 실패\n" + callback);
+                Dispatcher.Current.BeginInvoke(() =>
+                {
+                    GetMatchList(func);
+                });
+                return;
+            }
+
+            foreach (LitJson.JsonData row in callback.Rows())
+            {
+                MatchInfo matchInfo = new MatchInfo();
+                matchInfo.title = row["matchTitle"]["S"].ToString();
+                matchInfo.inDate = row["inDate"]["S"].ToString();
+                matchInfo.headCount = row["matchHeadCount"]["N"].ToString();
+                matchInfo.isSandBoxEnable = row["enable_sandbox"]["BOOL"].ToString().Equals("True") ? true : false;
+
+                foreach (MatchType type in Enum.GetValues(typeof(MatchType)))
+                {
+                    if (type.ToString().ToLower().Equals(row["matchType"]["S"].ToString().ToLower()))
+                    {
+                        matchInfo.matchType = type;
+                    }
+                }
+
+                foreach (MatchModeType type in Enum.GetValues(typeof(MatchModeType)))
+                {
+                    if (type.ToString().ToLower().Equals(row["matchModeType"]["S"].ToString().ToLower()))
+                    {
+                        matchInfo.matchModeType = type;
+                    }
+                }
+
+                matchInfos.Add(matchInfo);
+            }
+            Debug.Log("매칭카드 리스트 불러오기 성공 : " + matchInfos.Count);
+            func(true, string.Empty);
+        });
+
+        
     }
 }

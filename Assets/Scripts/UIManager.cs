@@ -31,7 +31,6 @@ public class UIManager : MonoBehaviour
         data.levelUpEvent += ChangeBackgroundColor;
         GameManager.Instance.gameStartEvent += () => 
         {
-            Debug.Log("game start");
             count.text = "0"; 
             resultPanel.SetActive(false); 
         };

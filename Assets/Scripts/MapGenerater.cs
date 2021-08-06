@@ -57,9 +57,8 @@ public class MapGenerater : MonoBehaviour
         GameObject obj = null;
 
         if (type == PlatType.None)
-        {    
+        {
             float num = Random.Range(0f, 1f);
-            Debug.Log(num);
             type = (PlatType)(
                 num <= probabilityTable.GetRange(0, 1).Sum() ? 0 :
                 num <= probabilityTable.GetRange(0, 1).Sum() + probabilityTable[1] ? 1 :
