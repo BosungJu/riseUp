@@ -6,6 +6,7 @@ using UnityEngine.UI;
 using LitJson;
 using System;
 using Battlehub.Dispatcher;
+using static BackEnd.SendQueue;
 
 public class ServerManager : Singleton<ServerManager>
 {
@@ -25,6 +26,9 @@ public class ServerManager : Singleton<ServerManager>
     protected override void Awake()
     {
         base.Awake();
+        //큐 가동.
+            SendQueue.StartSendQueue(true);
+
         MatchServer.Instance.text.text = "시작\n";
         Backend.Initialize(HandleBackendCallback, true);
         
@@ -32,9 +36,9 @@ public class ServerManager : Singleton<ServerManager>
 
     private void Update()
     {
-        if (Backend.IsInitialized == true)
+        if (SendQueue.IsInitialize == true)
         {
-            Backend.AsyncPoll();
+            SendQueue.Poll();
         }
     }
 
@@ -49,9 +53,9 @@ public class ServerManager : Singleton<ServerManager>
             // 서버시간 획득
             Debug.Log(Backend.Utils.GetServerTime());
 
-            //큐 가동.
-            SendQueue.StartSendQueue();
+      
 
+            
             /*
             if (PlayerPrefs.GetInt("isLogin") == 1)
             {
@@ -67,6 +71,27 @@ public class ServerManager : Singleton<ServerManager>
         else
         {
             Debug.LogError("Failed to initialize the backend");
+        }
+    }
+    void OnApplicationQuit()
+    {
+        Debug.Log("OnApplicationQuit");
+        StopSendQueue();
+    }
+
+    // 게임 시작, 게임 종료, 백그라운드로 돌아갈 때(홈버튼 누를 때) 호출됨
+    // 위의 종료함수와는 달리 무조건 호출됨
+    // 비동기 큐 종료, 재시작
+    void OnApplicationPause(bool isPause)
+    {
+        Debug.Log("OnApplicationPause : " + isPause);
+        if (isPause == false)
+        {
+            ResumeSendQueue();
+        }
+        else
+        {
+            PauseSendQueue();
         }
     }
 
