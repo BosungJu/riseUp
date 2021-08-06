@@ -26,6 +26,7 @@ public class MapGenerater : MonoBehaviour
     public GameObject blockedNone;
     private List<float> probabilityTable = new List<float>{ 0.3f, 0.315f, 0.315f, 0.07f };
 
+    public string map = "";
     private float y = 0; 
     public BSLibrary.Tween tween;
     public float jumpTime;
@@ -75,7 +76,7 @@ public class MapGenerater : MonoBehaviour
     {
         Debug.Log("game start");
         
-        for (int j = transform.childCount - 1; j >= 0; --j)
+        for (int j = transform.childCount - 1; j > 0; --j)
         {
             Destroy(transform.GetChild(j).gameObject);
         }
@@ -131,7 +132,7 @@ public class MapGenerater : MonoBehaviour
         blocks.Add(blockedRight);
         blocks.Add(blockedNone);
 
-        data.gameStartEvent += Init;
+        GameManager.Instance.gameStartEvent += Init;
     }
 
     private void Update()
@@ -139,8 +140,15 @@ public class MapGenerater : MonoBehaviour
         if (Input.GetMouseButtonDown(0)) // 점프 (터치, 좌클릭) 시작 버튼 이기도 함.
         {
             if (!nowJumping && GameManager.Instance.isPlay) 
-            { 
-                StartCoroutine("Jump"); 
+            {
+                if (MatchServer.Instance.isSuperUser) 
+                { 
+                    StartCoroutine("Jump"); 
+                }
+                else
+                {
+                    MatchServer.Instance.SendClickData();
+                }
             }
         }
     }

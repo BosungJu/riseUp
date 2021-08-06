@@ -20,6 +20,7 @@ public class ServerManager : Singleton<ServerManager>
     protected override void Awake()
     {
         base.Awake();
+        MatchServer.Instance.text.text = "시작\n";
         Backend.Initialize(HandleBackendCallback, true);
     }
 
@@ -638,6 +639,7 @@ public class ServerManager : Singleton<ServerManager>
 
         bro = Backend.BMember.GuestLogin();
         Debug.Log(bro);
+        MatchServer.Instance.text.text += "게스트 로그인 성공\n";
     }
     public void AGuestLogin()
     {

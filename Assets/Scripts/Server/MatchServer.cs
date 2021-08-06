@@ -9,10 +9,14 @@ using BackEnd.Tcp;
 
 public class MatchServer : Singleton<MatchServer>
 {
-    private bool isConnectMatchServer = false;
-    private bool isConnectInGameServer = false;
+    public bool isConnectMatchServer = false;
+    public bool isConnectInGameServer = false;
+    public bool isSuperUser = false;
+    public Player player;
+    public OtherPlayer otherPlayer;
+    public Text text;
 
-    public void JoinMatchServer()
+    public void JoinMatchMakingServer()
     {
         if (isConnectMatchServer)
         {
@@ -26,9 +30,15 @@ public class MatchServer : Singleton<MatchServer>
         }
         else
         {
+            text.text += "매치 서버 입장\n";
             isConnectMatchServer = true;
             Debug.Log("성공");
         }
+    }
+
+    public void LeaveMatchMakingServer()
+    {
+        Backend.Match.LeaveMatchMakingServer();
     }
 
     public bool CreateRoom()
@@ -37,11 +47,12 @@ public class MatchServer : Singleton<MatchServer>
         {
             Debug.Log("don't Connect Match Server");
             Debug.Log("try Connect...");
-            JoinMatchServer();
+            JoinMatchMakingServer();
             return false;
         }
-
+        
         Backend.Match.CreateMatchRoom();
+        text.text += "방 생성\n";
         return true;
     }
 
@@ -61,7 +72,7 @@ public class MatchServer : Singleton<MatchServer>
         {
             Debug.Log("don't Connect Match Server");
             Debug.Log("try Connect...");
-            JoinMatchServer();
+            JoinMatchMakingServer();
             return;
         }
 
@@ -99,47 +110,74 @@ public class MatchServer : Singleton<MatchServer>
             Debug.Log("connect complete");
         }
     }
-    /*
-    private void ProcessMatchSuccess(MatchMakingResponseEventArgs args)
-    {
-        ErrorInfo errorInfo;
-        if (sessionIdList != null)
-        {
-            Debug.Log("이전 세션 저장 정보");
-            sessionIdList.Clear();
-        }
-
-        if (!Backend.Match.JoinGameServer(args.RoomInfo.m_inGameServerEndPoint.m_address, args.RoomInfo.m_inGameServerEndPoint.m_port, false, out errorInfo))
-        {
-            var debugLog = string.Format(FAIL_ACCESS_INGAME, errorInfo.ToString(), string.Empty);
-            Debug.Log(debugLog);
-        }
-        // 인자값에서 인게임 룸토큰을 저장해두어야 한다.
-        // 인게임 서버에서 룸에 접속할 때 필요
-        // 1분 내에 모든 유저가 룸에 접속하지 않으면 해당 룸은 파기된다.
-        isConnectInGameServer = true;
-        isJoinGameRoom = false;
-        isReconnectProcess = false;
-        inGameRoomToken = args.RoomInfo.m_inGameRoomToken;
-        isSandBoxGame = args.RoomInfo.m_enableSandbox;
-        var info = GetMatchInfo(args.MatchCardIndate);
-        if (info == null)
-        {
-            Debug.LogError("매치 정보를 불러오는 데 실패했습니다.");
-            return;
-        }
-
-        nowMatchType = info.matchType;
-        nowModeType = info.matchModeType;
-        numOfClient = int.Parse(info.headCount);
-    }
-    */
     
     private void ProcessMatchMakingResponse(MatchMakingResponseEventArgs args)
     {
-        
+        switch (args.ErrInfo)
+        {
+            case ErrorCode.Success:
+                // 매칭 성공했을 때
+                ProcessMatchSuccess(args);
+                break;
+            //case ErrorCode.Match_InProgress:
+            //    // 매칭 신청 성공했을 때 or 매칭 중일 때 매칭 신청을 시도했을 때
+
+            //    // 매칭 신청 성공했을 때
+            //    if (args.Reason == string.Empty)
+            //    {
+            //        debugLog = SUCCESS_REGIST_MATCHMAKE;
+
+            //        LobbyUI.GetInstance().MatchRequestCallback(true);
+            //    }
+            //    break;
+            case ErrorCode.Match_MatchMakingCanceled:
+                RequestMatchMaking();
+                break;
+        }
     }
-    
+
+    private void ProcessMatchSuccess(MatchMakingResponseEventArgs args)
+    {
+        ErrorInfo errorInfo;
+
+        if (!Backend.Match.JoinGameServer(args.RoomInfo.m_inGameServerEndPoint.m_address, args.RoomInfo.m_inGameServerEndPoint.m_port, false, out errorInfo))
+        {
+            Debug.Log(errorInfo.Reason);
+            return;
+        }
+
+        Backend.Match.JoinGameRoom(args.RoomInfo.m_inGameRoomToken);
+    }
+
+    public void SendClickData()
+    {
+        Backend.Match.SendDataToInGameRoom(new byte[]{1});
+    }
+
+    public void SendWindowData
+        (
+        string map, Vector3 userPos, Vector3 otherUserPos, 
+        Vector3 userDirection, Vector3 otherDirection,
+        string userState, string otherState)
+    {
+        Backend.Match.SendDataToInGameRoom(
+            Convert.FromBase64String(string.Format("{" +
+            "map : {{0}}, " +
+            "userPos : {1}, " +
+            "otherUserPos : {2}}, " +
+            "userDirection : {3}, " +
+            "otherUserDirection : {4}, " +
+            "userState : {5}, " +
+            "otherState : {6}}", 
+            map, 
+            userPos.ToString(),
+            otherUserPos.ToString(),
+            userDirection.ToString(),
+            otherDirection.ToString(),
+            userState,
+            otherState)));
+    }
+
     private void MatchMakingHandler()
     {
         Backend.Match.OnJoinMatchMakingServer += (args) =>
@@ -147,9 +185,80 @@ public class MatchServer : Singleton<MatchServer>
             ProcessAccessMatchMakingServer(args.ErrInfo);
         };
 
+        Backend.Match.OnLeaveMatchMakingServer += (args) =>
+        {
+            // TODO leave match making server
+        };
+
+        Backend.Match.OnMatchMakingRoomCreate += (args) =>
+        {
+            // TODO create room
+            // TODO 바로 매칭 시작
+            RequestMatchMaking();
+        };
+
         Backend.Match.OnMatchMakingResponse += (args) =>
         {
             ProcessMatchMakingResponse(args);
+        };
+
+        Backend.Match.OnSessionJoinInServer += (args) => 
+        {
+            if (args.ErrInfo != ErrorInfo.Success)
+            {
+                Debug.Log(args.ErrInfo.Reason);
+                return;
+            }
+        };
+
+        Backend.Match.OnSessionListInServer += (args) =>
+        {
+            
+        };
+
+        Backend.Match.OnLeaveInGameServer += (args) =>
+        {
+            if (args.ErrInfo != ErrorCode.Success)
+            {
+                Debug.Log(args.Reason);
+                return;
+            }
+        };
+
+        Backend.Match.OnMatchInGameAccess += (args) =>
+        {
+            if (args.ErrInfo != ErrorCode.Success)
+            {
+                Debug.Log(args.Reason);
+                return;
+            }
+
+            text.text += "access complete";
+            isSuperUser = args.GameRecord.m_isSuperGamer;
+            
+        };
+
+        Backend.Match.OnMatchInGameStart += () =>
+        {
+            Debug.Log("game start");
+        };
+
+        Backend.Match.OnMatchRelay += (args) => 
+        { 
+            // TODO jump
+            if (isSuperUser)
+            {
+                // TODO process jump
+                otherPlayer.Jump();
+            }
+        };
+
+        Backend.Match.OnMatchResult += (args) => // 게임이 완전히 끝났을때
+        {
+            if (args.ErrInfo == ErrorCode.Success)
+            {
+
+            }
         };
     }
 

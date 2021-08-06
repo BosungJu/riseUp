@@ -1,12 +1,15 @@
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class Player : MonoBehaviour
+public class OtherPlayer : MonoBehaviour
 {
     public Data data;
     public Animator animator;
+    public GameObject plat;
+
+    public float target_y;
 
     private float[] speedTable = { 1, 1.1f, 1.15f, 1.2f, 1.25f };
     private Vector3 direction;
@@ -14,24 +17,17 @@ public class Player : MonoBehaviour
 
     private void EventSetUp()
     {
-        data.levelUpEvent += LevelUpEvent;
-        data.jumpStartEvent += () => animator.SetBool("IsRunning", false);
-        data.jumpEndEvent += () => animator.SetBool("IsRunning", true);
         GameManager.Instance.gameStartEvent += GameStartEvent;
     }
 
-    // event function
-    private void LevelUpEvent(int level) // level 1 ~ n
-    {
-        if (level <= 5)
-        {
-            speed = speedTable[level - 1];
-        }
-    }
-    
     private void Collapse()
     {
         animator.SetBool("IsCollapse", true);
+    }
+
+    private void Awake()
+    {
+        
     }
 
     private void Start()
@@ -48,16 +44,35 @@ public class Player : MonoBehaviour
         transform.eulerAngles = new Vector3(0, 0, 0);
         direction = Vector3.left;
         speed = speedTable[0];
+        target_y = transform.position.y;
     }
 
     void FixedUpdate()
     {
-        if (GameManager.Instance.isPlay) { transform.Translate(direction * speed * Time.deltaTime * 2); }
+        if (GameManager.Instance.isPlay) 
+        {
+            transform.Translate(direction * speed * Time.deltaTime * 2);
+        }
+        
+        //if (transform.position.y > target_y)
+        //{
+        //    transform.Translate(Vector3.down * plat.transform.localScale.y);
+        //}
+        //else if (transform.position.y < target_y)
+        //{
+        //    transform.Translate(Vector3.up * plat.transform.localScale.y);
+        //}
+    }
+
+
+    public void Jump()
+    {
+        target_y += plat.transform.localScale.y;
     }
 
     private void OnCollisionEnter2D(Collision2D collision)
     {
-        if (collision.gameObject.CompareTag("Wall")) 
+        if (collision.gameObject.CompareTag("Wall"))
         {
             if (collision.transform.position.x > 0)
             {

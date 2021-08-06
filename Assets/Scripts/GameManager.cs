@@ -5,8 +5,11 @@ using UnityEngine;
 
 public class GameManager : BSLibrary.MonoSingleton<GameManager>
 {
-    public Data data;
+    public Data playerData;
+    public Data otherData;
     public bool isPlay;
+    public Action gameStartEvent;
+    public Action gameEndEvent;
 
     void Awake()
     {
@@ -20,18 +23,18 @@ public class GameManager : BSLibrary.MonoSingleton<GameManager>
 
     public void StartGame()
     {
-        data.level = 1;
-        data.count = 0;
+        playerData.level = 1;
+        playerData.count = 0;
         
         isPlay = true;
-        Debug.Log(data.gameStartEvent.Method.Name);
-        data.gameStartEvent();
+        Debug.Log(gameStartEvent.Method.Name);
+        gameStartEvent();
     }
 
     public void EndGame()
     {
         isPlay = false;
-        data.gameEndEvent();
+        gameEndEvent();
     }
 
     private void Update()
