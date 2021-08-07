@@ -40,6 +40,8 @@ public class MapGenerater : MonoBehaviour
                     GenerateBlock(new Vector3(0, y, 0), (PlatType)int.Parse("" + value[i]));
                     y += blockedAll.transform.localScale.y;
                 }
+
+                SendData();
             }
 
             _mapData = value;
@@ -118,26 +120,23 @@ public class MapGenerater : MonoBehaviour
         }
 
         stock = 15;
-        StartCoroutine("SendData");
+        //StartCoroutine("SendData");
     }
 
-    private IEnumerator SendData()
+    private void SendData()
     {
-        
+
         Debug.Log(GameManager.Instance.isPlay);
-        while (GameManager.Instance.isPlay) 
-        {
-            Debug.Log(MatchServer.Instance.isSuperUser && MatchServer.Instance.onMatch);
+        Debug.Log(MatchServer.Instance.isSuperUser && MatchServer.Instance.onMatch);
 
-            string playerState = (player.animator.GetBool("IsRunning") ? "1" : "0") + (player.animator.GetBool("IsCollapse") ? "1" : "0");
-            string otherPlayerState = (otherPlayer.animator.GetBool("IsRunning") ? "1" : "0") + (otherPlayer.animator.GetBool("IsCollapse") ? "1" : "0");
+        string playerState = (player.animator.GetBool("IsRunning") ? "1" : "0") + (player.animator.GetBool("IsCollapse") ? "1" : "0");
+        string otherPlayerState = (otherPlayer.animator.GetBool("IsRunning") ? "1" : "0") + (otherPlayer.animator.GetBool("IsCollapse") ? "1" : "0");
 
-            if (MatchServer.Instance.isSuperUser && MatchServer.Instance.onMatch)
+        if (MatchServer.Instance.isSuperUser && MatchServer.Instance.onMatch)
             MatchServer.Instance.SendWindowData(mapData,
                 player, otherPlayer,
                 playerState, otherPlayerState);
-            yield return new WaitForSeconds(0.5f);
-        } 
+        //yield return new WaitForSeconds(1.5f);
     }
 
     private IEnumerator Jump()
@@ -145,6 +144,7 @@ public class MapGenerater : MonoBehaviour
         nowJumping = true;
         data.jumpStartEvent();
         tween.StartCoroutine();
+        SendData();
         //SendData(playerState, otherPlayerState);
 
         Vector3 beforePos = transform.position;
