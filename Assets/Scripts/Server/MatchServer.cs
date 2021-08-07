@@ -191,13 +191,18 @@ public class MatchServer : Singleton<MatchServer>
 
     public void SendWindowData
         (
-        List<int> map, Player player, OtherPlayer otherPlayer,
+        string map, Player player, OtherPlayer otherPlayer,
         string userState, string otherState)
     {
 
-        Protocol.MapData message = new Protocol.MapData(map.ToArray(), player.transform.position.x,
-            otherPlayer.transform.position.x, player.data.count, otherPlayer.data.count,
-            (int)player.transform.eulerAngles.y, (int)otherPlayer.transform.eulerAngles.y);
+        Protocol.MapData message = new Protocol.MapData(new Protocol.UserMapData(
+            Encoding.UTF8.GetBytes(map),
+            player.transform.position.x,
+            otherPlayer.transform.position.x,
+            player.data.count,
+            otherPlayer.data.count,
+            (int)player.transform.eulerAngles.y,
+            (int)otherPlayer.transform.eulerAngles.y));
 
         var data = DataParser.DataToJsonData(message);
 
@@ -307,7 +312,7 @@ public class MatchServer : Singleton<MatchServer>
                 return;
             }
 
-            Debug.Log(msg.type);
+            Debug.Log(Encoding.UTF8.GetString(args.BinaryUserData));
 
             switch (msg.type)
             {
@@ -353,20 +358,16 @@ public class MatchServer : Singleton<MatchServer>
                     Debug.Log("get map data : " + isSuperUser);
                     if (!isSuperUser)
                     {
-                        Protocol.MapData mapData = DataParser.ReadJsonData<Protocol.MapData>(args.BinaryUserData);
-                        Debug.Log(mapData.userCount);
-                        //Debug.Log("map code : " + mapData.map);
-                        List<int> buf = new List<int>(mapData.map);
-                        buf.GetRange(mapGenerater.mapData.Count, buf.Count - mapGenerater.mapData.Count);
-                        mapGenerater.mapData.AddRange(buf);
-                        player.transform.position = new Vector3(mapData.userPos_x, -1, 0);
-                        otherPlayer.transform.position = new Vector3(
-                            mapData.superUserPos_x,
-                            -1 + otherPlayer.plat.transform.localScale.y * (mapData.superUserCount - mapData.superUserCount), 
-                            0);
-                        mapGenerater.transform.position = new Vector3(0, 
-                            -1 - mapGenerater.blockedAll.transform.localScale.y * mapData.userCount,
-                            0);
+                        Protocol.MapData mapData = JsonUtility.FromJson<Protocol.MapData>(Encoding.UTF8.GetString(args.BinaryUserData));
+                        mapGenerater.mapData = Encoding.UTF8.GetString(mapData.map);
+                        //player.transform.position = new Vector3(mapData.userPos_x, -1, 0);
+                        //otherPlayer.transform.position = new Vector3(
+                        //    mapData.superUserPos_x,
+                        //    -1 + otherPlayer.plat.transform.localScale.y * (mapData.superUserCount - mapData.superUserCount),
+                        //    0);
+                        //mapGenerater.transform.position = new Vector3(0,
+                        //    -1 - mapGenerater.blockedAll.transform.localScale.y * mapData.userCount,
+                        //    0);
                     }
                     break;
                 case Protocol.Type.GameStart:

@@ -49,7 +49,7 @@ public class OtherPlayer : MonoBehaviour
 
     void FixedUpdate()
     {
-        if (GameManager.Instance.isPlay && MatchServer.Instance.mapGenerater.mapData.Count != 0) 
+        if (GameManager.Instance.isPlay && MatchServer.Instance.mapGenerater.mapData.Length != 0) 
         {
             transform.Translate(direction * speed * Time.deltaTime * 2);
         }

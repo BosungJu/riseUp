@@ -34,9 +34,39 @@ namespace Protocol
         }
     }
 
+    public class UserMapData
+    {
+        public byte[] map;
+
+        public float superUserPos_x;
+        public float userPos_x;
+
+        public int superUserCount;
+        public int userCount;
+
+        public int superUserDirection;
+        public int userDirection;
+
+        public UserMapData()
+        {
+
+        }
+
+        public UserMapData(byte[] map, float superUserPos_x, float userPos_x, int superUserCount, int userCount, int superUserDirection, int userDirection)
+        {
+            this.map = map;
+            this.superUserPos_x = superUserPos_x;
+            this.userPos_x = userPos_x;
+            this.superUserCount = superUserCount;
+            this.userCount = userCount;
+            this.superUserDirection = superUserDirection;
+            this.userDirection = userDirection;
+        }
+    }
+
     public class MapData : Message
     {
-        public int[] map;
+        public byte[] map;
 
         public float superUserPos_x;
         public float userPos_x;
@@ -47,15 +77,15 @@ namespace Protocol
         public int superUserDirection;
         public int userDirection;
 
-        public MapData(int[] map, float superUserPos_x, float userPos_x, int superUserCount, int userCount, int superUserDirection, int userDirection) : base(Type.MapData)
+        public MapData(UserMapData userMapData) : base(Type.MapData)
         {
-            this.map = map;
-            this.superUserPos_x = superUserPos_x;
-            this.superUserCount = superUserCount;
-            this.userPos_x = userPos_x;
-            this.userCount = userCount;
-            this.superUserDirection = superUserDirection;
-            this.userDirection = userDirection;
+            this.map = userMapData.map;
+            this.superUserPos_x = userMapData.superUserPos_x;
+            this.superUserCount = userMapData.superUserCount;
+            this.userPos_x = userMapData.userPos_x;
+            this.userCount = userMapData.userCount;
+            this.superUserDirection = userMapData.superUserDirection;
+            this.userDirection = userMapData.userDirection;
         }
     }
 }
