@@ -340,16 +340,16 @@ public class MatchServer : Singleton<MatchServer>
                     break;
                 case Protocol.Type.Collapse:
                     // TODO End Game
-
-
                     Protocol.Collapse collapse = DataParser.ReadJsonData<Protocol.Collapse>(args.BinaryUserData);
 
+                    int myCount = collapse.mySessionID == mySessionID ? collapse.myCount : collapse.myCount + 1;
+                    int otherCount = collapse.otherSessionID == otherSessionID ? collapse.otherCount : collapse.otherCount + 1;
                     MatchGameResult matchGameResult = new MatchGameResult();
                     matchGameResult.m_winners = new List<SessionId>();
                     matchGameResult.m_losers = new List<SessionId>();
                     matchGameResult.m_draws = new List<SessionId>();
                     
-                    if (collapse.myCount > collapse.otherCount)
+                    if (myCount > otherCount)
                     {
                         matchGameResult.m_winners.Add(mySessionID);
                         matchGameResult.m_losers.Add(otherSessionID);
@@ -362,7 +362,7 @@ public class MatchServer : Singleton<MatchServer>
                             resultCode = -1;
                         }
                     }
-                    else if (collapse.myCount < collapse.otherCount)
+                    else if (myCount < otherCount)
                     {
                         matchGameResult.m_winners.Add(otherSessionID);
                         matchGameResult.m_losers.Add(mySessionID);

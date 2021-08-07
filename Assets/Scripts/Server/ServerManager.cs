@@ -52,7 +52,7 @@ public class ServerManager : Singleton<ServerManager>
             // 서버시간 획득
             Debug.Log(Backend.Utils.GetServerTime());
 
-      
+            DeleteGuestInfo();
 
             
             /*
