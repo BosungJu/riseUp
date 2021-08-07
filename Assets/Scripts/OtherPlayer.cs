@@ -6,6 +6,7 @@ using UnityEngine;
 public class OtherPlayer : MonoBehaviour
 {
     public Data data;
+    public Data playerData;
     public Animator animator;
     public GameObject plat;
 
@@ -14,6 +15,10 @@ public class OtherPlayer : MonoBehaviour
     private float[] speedTable = { 1, 1.1f, 1.15f, 1.2f, 1.25f };
     private Vector3 direction;
     private float speed;
+    public float jumpTime;
+    public BSLibrary.Tween tween;
+
+    public bool nowJumping { get; private set; }  = false;
 
     private void EventSetUp()
     {
@@ -44,7 +49,7 @@ public class OtherPlayer : MonoBehaviour
 
     void FixedUpdate()
     {
-        if (GameManager.Instance.isPlay) 
+        if (GameManager.Instance.isPlay && MatchServer.Instance.mapGenerater.mapData != "") 
         {
             transform.Translate(direction * speed * Time.deltaTime * 2);
         }
@@ -59,10 +64,28 @@ public class OtherPlayer : MonoBehaviour
         //}
     }
 
-
-    public void Jump()
+    public void PlayJump()
     {
-        target_y += plat.transform.localScale.y;
+        StartCoroutine("Jump");
+    }
+
+    private IEnumerator Jump()
+    {
+        nowJumping = true;
+        //target_y += plat.transform.localScale.y;
+        Vector3 beforePos = transform.position;
+
+        while (tween.IsPlay)
+        {
+            transform.position = beforePos - new Vector3(0, plat.transform.localScale.y * tween.ReturnValueToFloat, 0);
+            yield return new WaitForFixedUpdate();
+        }
+        transform.position = beforePos - new Vector3(0, plat.transform.localScale.y, 0);
+
+        yield return new WaitForSeconds(0.05f);
+        if (GameManager.Instance.isPlay) { data.count++; }
+        if (data.count > MatchServer.Instance.mapGenerater.data.count) { MatchServer.Instance.mapGenerater.stock--; }
+        nowJumping = false;
     }
 
     private void OnCollisionEnter2D(Collision2D collision)

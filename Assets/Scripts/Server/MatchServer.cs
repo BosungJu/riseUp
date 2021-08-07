@@ -6,6 +6,7 @@ using UnityEngine.UI;
 using LitJson;
 using System;
 using BackEnd.Tcp;
+using System.Text;
 
 public class MatchServer : Singleton<MatchServer>
 {
@@ -25,10 +26,16 @@ public class MatchServer : Singleton<MatchServer>
     public bool isConnectMatchServer = false;
     public bool isConnectInGameServer = false;
     public bool isSuperUser = false;
+    private SessionId mySessionID;
+    private SessionId otherSessionID;
+    private string nickname = "";
+    private string superUserID;
     public bool onMatch = false;
     public Player player;
     public OtherPlayer otherPlayer;
     public Text text;
+    public string roomToken = "";
+    public MapGenerater mapGenerater;
 
     public void JoinMatchMakingServer()
     {
@@ -142,7 +149,7 @@ public class MatchServer : Singleton<MatchServer>
                 break;
             case ErrorCode.Match_InProgress:
                 // 매칭 신청 성공했을 때 or 매칭 중일 때 매칭 신청을 시도했을 때
-                Debug.Log("2");
+                Debug.Log("대기중");
                 // 매칭 신청 성공했을 때
                 if (args.Reason == string.Empty)
                 {
@@ -166,43 +173,35 @@ public class MatchServer : Singleton<MatchServer>
     {
         ErrorInfo errorInfo;
 
+        roomToken = args.RoomInfo.m_inGameRoomToken;
+
         if (!Backend.Match.JoinGameServer(args.RoomInfo.m_inGameServerEndPoint.m_address, args.RoomInfo.m_inGameServerEndPoint.m_port, false, out errorInfo))
         {
             Debug.Log(errorInfo.Reason);
             return;
         }
-
-        Backend.Match.JoinGameRoom(args.RoomInfo.m_inGameRoomToken);
-        onMatch = true;
     }
 
     public void SendClickData()
     {
-        Backend.Match.SendDataToInGameRoom(new byte[]{1});
+        var data = DataParser.DataToJsonData<Protocol.JumpMessage>(new Protocol.JumpMessage(otherPlayer.transform.position.x));
+
+        Backend.Match.SendDataToInGameRoom(data);
     }
 
     public void SendWindowData
         (
-        string map, Vector3 userPos, Vector3 otherUserPos, 
-        Vector3 userDirection, Vector3 otherDirection,
+        string map, Player player, OtherPlayer otherPlayer,
         string userState, string otherState)
     {
-        Backend.Match.SendDataToInGameRoom(
-            Convert.FromBase64String(string.Format("{" +
-            "map : {{0}}, " +
-            "userPos : {1}, " +
-            "otherUserPos : {2}}, " +
-            "userDirection : {3}, " +
-            "otherUserDirection : {4}, " +
-            "userState : {5}, " +
-            "otherState : {6}}", 
-            map, 
-            userPos.ToString(),
-            otherUserPos.ToString(),
-            userDirection.ToString(),
-            otherDirection.ToString(),
-            userState,
-            otherState)));
+
+        Protocol.MapData message = new Protocol.MapData(map, player.transform.position.x,
+            otherPlayer.transform.position.x, player.data.count, otherPlayer.data.count,
+            (int)player.transform.eulerAngles.y, (int)otherPlayer.transform.eulerAngles.y);
+
+        var data = DataParser.DataToJsonData(message);
+
+        Backend.Match.SendDataToInGameRoom(data);
     }
 
     private void MatchMakingHandler()
@@ -219,8 +218,6 @@ public class MatchServer : Singleton<MatchServer>
 
         Backend.Match.OnMatchMakingRoomCreate += (args) =>
         {
-            // TODO create room
-            // TODO 바로 매칭 시작
             Debug.Log("OnMatchMakingRoomCreate : " + args.ErrInfo + " : " + args.Reason);
 
             if (args.ErrInfo.Equals(ErrorCode.Success))
@@ -242,7 +239,9 @@ public class MatchServer : Singleton<MatchServer>
                 return;
             }
 
-            Debug.Log("game 시작");
+            // Debug.Log("game 시작");
+            Backend.Match.JoinGameRoom(roomToken);
+            onMatch = true;
         };
 
         Backend.Match.OnSessionListInServer += (args) =>
@@ -268,27 +267,123 @@ public class MatchServer : Singleton<MatchServer>
             }
 
             text.text += "access complete";
-            isSuperUser = args.GameRecord.m_isSuperGamer;
-            
+
+            if (nickname == "")
+            {
+                nickname = args.GameRecord.m_nickname;
+                mySessionID = args.GameRecord.m_sessionId;
+                isSuperUser = args.GameRecord.m_isSuperGamer;
+            }
+            else
+            {
+                otherSessionID = args.GameRecord.m_sessionId;
+            }
+            Debug.Log("슈퍼 유저 : " + isSuperUser);
+            Debug.Log("게임 엑세스 성공");
         };
 
         Backend.Match.OnMatchInGameStart += () =>
         {
+            if (isSuperUser) { mapGenerater.Init(); }
             Debug.Log("game start");
         };
 
         Backend.Match.OnMatchRelay += (args) => 
-        { 
-            // TODO jump
-            if (isSuperUser)
+        {
+            if (args.BinaryUserData == null)
             {
-                // TODO process jump
-                otherPlayer.Jump();
+                return;
             }
+
+            Protocol.Message msg = DataParser.ReadJsonData<Protocol.Message>(args.BinaryUserData);
+            
+
+            if (msg == null)
+            {
+                return;
+            }
+            if (isSuperUser != true && args.From.SessionId == mySessionID)
+            {
+                return;
+            }
+
+            Debug.Log(msg.type);
+
+            switch (msg.type)
+            {
+                case Protocol.Type.Jump:
+                    // TODO other player jump
+                    Debug.Log("jump");
+                    if (isSuperUser && !otherPlayer.nowJumping) 
+                    {
+                        otherPlayer.PlayJump();
+                    }
+                    break;
+                case Protocol.Type.Collapse:
+                    // TODO End Game
+                    if (isSuperUser)
+                    {
+                        MatchGameResult matchGameResult = new MatchGameResult();
+                        matchGameResult.m_winners = new List<SessionId>();
+                        matchGameResult.m_losers = new List<SessionId>();
+                        matchGameResult.m_draws = new List<SessionId>();
+
+                        if (player.data.count > otherPlayer.data.count && isSuperUser)
+                        {
+                            matchGameResult.m_winners.Add(mySessionID);
+                            matchGameResult.m_losers.Add(otherSessionID);
+                        }
+                        else if (player.data.count < otherPlayer.data.count && isSuperUser)
+                        {
+                            matchGameResult.m_winners.Add(otherSessionID);
+                            matchGameResult.m_losers.Add(mySessionID);
+                        }
+                        else
+                        {
+                            matchGameResult.m_draws.Add(mySessionID);
+                            matchGameResult.m_draws.Add(otherSessionID);
+                        }
+                        Backend.Match.MatchEnd(matchGameResult);
+                        GameManager.Instance.EndGame();
+                    }
+                    break;
+                case Protocol.Type.MapData:
+                    // TODO map 동기화 and player position 동기화
+                    Debug.Log("get map data : " + isSuperUser);
+                    if (!isSuperUser)
+                    {
+                        Protocol.MapData mapData = (Protocol.MapData)msg;
+                        Debug.Log(mapData.map);
+                        mapGenerater.mapData = mapData.map;
+                        player.transform.position = new Vector3(mapData.userPos_x, -1, 0);
+                        otherPlayer.transform.position = new Vector3(
+                            mapData.superUserPos_x,
+                            -1 + otherPlayer.plat.transform.localScale.y * (mapData.superUserCount - mapData.superUserCount), 
+                            0);
+                        mapGenerater.transform.position = new Vector3(0, 
+                            -1 - mapGenerater.blockedAll.transform.localScale.y * mapData.userCount,
+                            0);
+                    }
+                    break;
+                case Protocol.Type.GameStart:
+                    
+                    break;
+                case Protocol.Type.GameEnd:
+                    break;
+            }
+
+            //// TODO jump
+            //if (isSuperUser && args.BinaryUserData.Length == 1)
+            //{
+            //    // TODO process jump
+            //    otherPlayer.Jump();
+            //}
         };
 
         Backend.Match.OnMatchResult += (args) => // 게임이 완전히 끝났을때
         {
+            
+            
             if (args.ErrInfo == ErrorCode.Success)
             {
 

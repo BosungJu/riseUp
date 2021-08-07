@@ -26,7 +26,24 @@ public class MapGenerater : MonoBehaviour
     public GameObject blockedNone;
     private List<float> probabilityTable = new List<float>{ 0.3f, 0.315f, 0.315f, 0.07f };
 
-    public string map = "";
+    private string _mapData = "";
+    public string mapData 
+    { 
+        get { return _mapData; } 
+        set 
+        { 
+            if (!MatchServer.Instance.isSuperUser)
+            {
+                for (int i = _mapData.Length; i < value.Length; ++i)
+                {
+                    GenerateBlock(new Vector3(0, y, 0), (PlatType)int.Parse("" + value[i]));
+                    y += blockedAll.transform.localScale.y;
+                }
+            }
+
+            _mapData = value;
+        } 
+    }
     private float y = 0; 
     public BSLibrary.Tween tween;
     public float jumpTime;
@@ -35,14 +52,18 @@ public class MapGenerater : MonoBehaviour
 
     public Data data;
 
-    private int stock
+    public Player player;
+    public OtherPlayer otherPlayer;
+
+    public int stock
     {
         get { return _stock; }
         set
         {
-            if (_stock > value)
+            if (_stock > value && MatchServer.Instance.isSuperUser)
             {
-                GenerateBlock(new Vector3(0, y, 0));
+                PlatType type = GenerateBlock(new Vector3(0, y, 0));
+                mapData += ((int)type).ToString();
                 y += blockedAll.transform.localScale.y;
                 _stock = value + 1;
                 return;
@@ -52,7 +73,7 @@ public class MapGenerater : MonoBehaviour
         }
     }
 
-    private void GenerateBlock(Vector3 pos, PlatType type = PlatType.None)
+    private PlatType GenerateBlock(Vector3 pos, PlatType type = PlatType.None)
     {
         GameObject obj = null;
 
@@ -66,12 +87,15 @@ public class MapGenerater : MonoBehaviour
                 num <= probabilityTable.GetRange(0, 3).Sum() + probabilityTable[3] ? 3 : 0);
         }
 
+        mapData += ((int)type).ToString();
         obj = blocks[(int)type];
 
         Instantiate(obj, transform).transform.position += pos;
+
+        return type;
     }
 
-    private void Init() // 장판들 초기 배치
+    public void Init() // 장판들 초기 배치
     {
         
         for (int j = transform.childCount - 1; j > 0; --j)
@@ -92,6 +116,26 @@ public class MapGenerater : MonoBehaviour
         }
 
         stock = 15;
+        StartCoroutine("SendData");
+    }
+
+    private IEnumerator SendData()
+    {
+        
+        Debug.Log(GameManager.Instance.isPlay);
+        while (GameManager.Instance.isPlay) 
+        {
+            Debug.Log(MatchServer.Instance.isSuperUser && MatchServer.Instance.onMatch);
+
+            string playerState = (player.animator.GetBool("IsRunning") ? "1" : "0") + (player.animator.GetBool("IsCollapse") ? "1" : "0");
+            string otherPlayerState = (otherPlayer.animator.GetBool("IsRunning") ? "1" : "0") + (otherPlayer.animator.GetBool("IsCollapse") ? "1" : "0");
+
+            if (MatchServer.Instance.isSuperUser && MatchServer.Instance.onMatch)
+            MatchServer.Instance.SendWindowData(mapData,
+                player, otherPlayer,
+                playerState, otherPlayerState);
+            yield return new WaitForSeconds(0.5f);
+        } 
     }
 
     private IEnumerator Jump()
@@ -99,6 +143,7 @@ public class MapGenerater : MonoBehaviour
         nowJumping = true;
         data.jumpStartEvent();
         tween.StartCoroutine();
+        //SendData(playerState, otherPlayerState);
 
         Vector3 beforePos = transform.position;
 
@@ -112,8 +157,8 @@ public class MapGenerater : MonoBehaviour
         yield return new WaitForSeconds(0.05f); // give delay
 
         if (GameManager.Instance.isPlay) { data.count += 1; }
-        
-        stock--;
+
+        if (data.count > MatchServer.Instance.mapGenerater.otherPlayer.data.count) { stock--; }
         data.jumpEndEvent();
         nowJumping = false;
     }
@@ -130,13 +175,14 @@ public class MapGenerater : MonoBehaviour
         blocks.Add(blockedRight);
         blocks.Add(blockedNone);
 
-        GameManager.Instance.gameStartEvent += Init;
+        //GameManager.Instance.gameStartEvent += Init;
     }
 
     private void Update()
     {
         if (Input.GetMouseButtonDown(0)) // 점프 (터치, 좌클릭) 시작 버튼 이기도 함.
         {
+            Debug.Log("클릭");
             if (!nowJumping && GameManager.Instance.isPlay && MatchServer.Instance.onMatch) 
             {
                 if (MatchServer.Instance.isSuperUser) 
