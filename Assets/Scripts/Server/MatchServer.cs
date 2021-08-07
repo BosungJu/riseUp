@@ -6,7 +6,6 @@ using UnityEngine.UI;
 using LitJson;
 using System;
 using BackEnd.Tcp;
-using Battlehub.Dispatcher;
 
 public class MatchServer : Singleton<MatchServer>
 {
@@ -26,6 +25,7 @@ public class MatchServer : Singleton<MatchServer>
     public bool isConnectMatchServer = false;
     public bool isConnectInGameServer = false;
     public bool isSuperUser = false;
+    public bool onMatch = false;
     public Player player;
     public OtherPlayer otherPlayer;
     public Text text;
@@ -96,10 +96,9 @@ public class MatchServer : Singleton<MatchServer>
 
         Debug.Log("인게임 진행");
 
-        BackendReturnObject obj =  Backend.Match.GetMatchList();
-
-        //Backend.Match.RequestMatchMaking(BackEnd.Tcp.MatchType.Random, BackEnd.Tcp.MatchModeType.OneOnOne, matchInfos[0].inDate);
-        Debug.Log("머임");
+        var matchList = Backend.Match.GetMatchList();
+        Debug.Log(matchList.GetInDate());
+        Backend.Match.RequestMatchMaking(BackEnd.Tcp.MatchType.Random, BackEnd.Tcp.MatchModeType.OneOnOne, matchList.GetInDate());
         if (isConnectInGameServer)
         {
             Debug.Log("나감");
@@ -151,11 +150,11 @@ public class MatchServer : Singleton<MatchServer>
                 }
                 break;
             case ErrorCode.InvalidOperation:
-                Debug.Log("실패");
+                Debug.Log("실패 : " + args.Reason);
 
                 break;
             case ErrorCode.Match_MatchMakingCanceled:
-                Debug.Log("실패");
+                Debug.Log("실패 : " + args.Reason);
                 RequestMatchMaking();
                 break;
         }
@@ -174,6 +173,7 @@ public class MatchServer : Singleton<MatchServer>
         }
 
         Backend.Match.JoinGameRoom(args.RoomInfo.m_inGameRoomToken);
+        onMatch = true;
     }
 
     public void SendClickData()
@@ -225,7 +225,7 @@ public class MatchServer : Singleton<MatchServer>
 
             if (args.ErrInfo.Equals(ErrorCode.Success))
             {
-                RequestMatchMaking();
+                //RequestMatchMaking();
             }
         };
 
@@ -317,15 +317,17 @@ public class MatchServer : Singleton<MatchServer>
             if (callback.IsSuccess() == false)
             {
                 Debug.Log("매칭카드 리스트 불러오기 실패\n" + callback);
-                Dispatcher.Current.BeginInvoke(() =>
-                {
-                    GetMatchList(func);
-                });
+                //Dispatcher.Current.BeginInvoke(() =>
+                //{
+                //GetMatchList(func);
+                //});
                 return;
             }
-
+            Debug.Log("Get Match List");
             foreach (LitJson.JsonData row in callback.Rows())
             {
+                Debug.Log("create 매칭 카드");
+
                 MatchInfo matchInfo = new MatchInfo();
                 matchInfo.title = row["matchTitle"]["S"].ToString();
                 matchInfo.inDate = row["inDate"]["S"].ToString();

@@ -5,7 +5,6 @@ using BackEnd;
 using UnityEngine.UI;
 using LitJson;
 using System;
-using Battlehub.Dispatcher;
 using static BackEnd.SendQueue;
 
 public class ServerManager : Singleton<ServerManager>
@@ -448,7 +447,7 @@ public class ServerManager : Singleton<ServerManager>
         }
         else
         {
-            Debug.Log("check NicknameInput");
+            Debug.Log("check Nickname Input");
         }
     }
 
@@ -724,14 +723,16 @@ public class ServerManager : Singleton<ServerManager>
 
         Action<bool, string> func = (bool result, string error) =>
         {
-            Dispatcher.Current.BeginInvoke(() =>
+            if (!result)
             {
-                if (!result)
-                {
-                    Debug.Log("guest login error : " + error);
-                    return;
-                }
-            });
+                Debug.Log("guest login error : " + error);
+                return;
+            }
+
+            //Dispatcher.Current.BeginInvoke(() =>
+            //{
+                
+            //});
         };
 
         //bro = Backend.BMember.GuestLogin();

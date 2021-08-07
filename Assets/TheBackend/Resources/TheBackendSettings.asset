@@ -12,8 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 660911240, guid: f624596d5fe1bd5459a5da424a8abc1b, type: 3}
   m_Name: TheBackendSettings
   m_EditorClassIdentifier: 
-  clientAppID: 6645a380-f52f-11eb-8ea9-c1d500f52f142413
-  signatureKey: 6645a381-f52f-11eb-8ea9-c1d500f52f142413
+  clientAppID: 91f9de00-f72e-11eb-8d77-8df6e8c3749e2423
+  signatureKey: 91f9de01-f72e-11eb-8d77-8df6e8c3749e2423
   functionAuthKey: 
   packageName: com.DefaultCompany.riseUp
   isAllPlatform: 1

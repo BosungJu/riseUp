@@ -73,7 +73,6 @@ public class MapGenerater : MonoBehaviour
 
     private void Init() // 장판들 초기 배치
     {
-        Debug.Log("game start");
         
         for (int j = transform.childCount - 1; j > 0; --j)
         {
@@ -138,7 +137,7 @@ public class MapGenerater : MonoBehaviour
     {
         if (Input.GetMouseButtonDown(0)) // 점프 (터치, 좌클릭) 시작 버튼 이기도 함.
         {
-            if (!nowJumping && GameManager.Instance.isPlay) 
+            if (!nowJumping && GameManager.Instance.isPlay && MatchServer.Instance.onMatch) 
             {
                 if (MatchServer.Instance.isSuperUser) 
                 { 

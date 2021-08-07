@@ -21,7 +21,6 @@ public class UIManager : MonoBehaviour
         Color c;
 
         ColorUtility.TryParseHtmlString(color, out c);
-        Debug.Log(color + c.ToString());
         Camera.main.backgroundColor = c;
     }
 

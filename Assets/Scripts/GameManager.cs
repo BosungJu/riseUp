@@ -27,7 +27,6 @@ public class GameManager : BSLibrary.MonoSingleton<GameManager>
         playerData.count = 0;
         
         isPlay = true;
-        Debug.Log(gameStartEvent.Method.Name);
         gameStartEvent();
     }
 

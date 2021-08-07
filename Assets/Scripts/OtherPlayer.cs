@@ -25,19 +25,14 @@ public class OtherPlayer : MonoBehaviour
         animator.SetBool("IsCollapse", true);
     }
 
-    private void Awake()
-    {
-        
-    }
 
-    private void Start()
+    private void Awake()
     {
         EventSetUp();
     }
 
     private void GameStartEvent()
     {
-        Debug.Log("game start");
         animator.SetBool("IsRunning", true);
         animator.SetBool("IsCollapse", false);
         transform.position = new Vector3(0, -1, 0);

@@ -41,7 +41,6 @@ public class Player : MonoBehaviour
 
     private void GameStartEvent()
     {
-        Debug.Log("game start");
         animator.SetBool("IsRunning", true);
         animator.SetBool("IsCollapse", false);
         transform.position = new Vector3(0, -1, 0);
