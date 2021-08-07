@@ -17,11 +17,14 @@ public class OtherPlayer : MonoBehaviour
     private float speed;
     public float jumpTime;
     public BSLibrary.Tween tween;
+    public Transform pivot;
 
     public bool nowJumping { get; private set; }  = false;
 
     private void EventSetUp()
     {
+        data.jumpStartEvent += () => animator.SetBool("IsRunning", false);
+        data.jumpEndEvent += () => animator.SetBool("IsRunning", true);
         GameManager.Instance.gameStartEvent += GameStartEvent;
     }
 
@@ -49,42 +52,48 @@ public class OtherPlayer : MonoBehaviour
 
     void FixedUpdate()
     {
-        if (GameManager.Instance.isPlay && MatchServer.Instance.mapGenerater.mapData.Length != 0) 
+        if (MatchServer.Instance.isGameStart) 
         {
             transform.Translate(direction * speed * Time.deltaTime * 2);
         }
-        
-        //if (transform.position.y > target_y)
-        //{
-        //    transform.Translate(Vector3.down * plat.transform.localScale.y);
-        //}
-        //else if (transform.position.y < target_y)
-        //{
-        //    transform.Translate(Vector3.up * plat.transform.localScale.y);
-        //}
     }
 
-    public void PlayJump()
+    public void PlayJump(Protocol.JumpMessage jumpMessage)
     {
-        if (!nowJumping) StartCoroutine("Jump");
+        //transform.position = new Vector3(jumpMessage.userPos_x, 
+        //    jumpMessage.count * plat.transform.localScale.y, 
+        //    0);
+        //transform.eulerAngles = new Vector3(0, jumpMessage.userDirection, 0);
+        //data.count = jumpMessage.count;
+        if (!nowJumping) 
+        { 
+            var coroutine = Jump();
+            StartCoroutine(coroutine);
+        }
     }
 
     private IEnumerator Jump()
     {
         nowJumping = true;
+        data.jumpStartEvent();
+        tween.StartCoroutine();
         //target_y += plat.transform.localScale.y;
-        Vector3 beforePos = transform.position;
+        Vector3 beforePos = pivot.position;
 
         while (tween.IsPlay)
         {
-            transform.position = beforePos + new Vector3(0, plat.transform.localScale.y * tween.ReturnValueToFloat, 0);
+            pivot.position = beforePos + new Vector3(0, plat.transform.localScale.y * tween.ReturnValueToFloat, 0);
             yield return new WaitForFixedUpdate();
         }
-        transform.position = beforePos + new Vector3(0, plat.transform.localScale.y, 0);
+        pivot.position = beforePos + new Vector3(0, plat.transform.localScale.y, 0);
 
         yield return new WaitForSeconds(0.05f);
-        if (GameManager.Instance.isPlay) { data.count++; }
-        if (data.count > MatchServer.Instance.mapGenerater.data.count) { MatchServer.Instance.mapGenerater.stock--; }
+        
+        if (GameManager.Instance.isPlay) { data.count += 1; }
+
+        if (data.count > GameManager.Instance.playerData.count) { MatchServer.Instance.mapGenerater.stock--; }
+
+        data.jumpEndEvent();
         nowJumping = false;
     }
 

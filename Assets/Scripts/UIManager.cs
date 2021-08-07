@@ -13,6 +13,7 @@ public class UIManager : MonoBehaviour
     public GameObject resultPanel;
     public Text resultCount;
     public Text resultLevel;
+    public InputField inputField;
     
     private void ChangeBackgroundColor(int level)
     {
@@ -37,14 +38,21 @@ public class UIManager : MonoBehaviour
         GameManager.Instance.gameEndEvent += () => 
         { 
             resultPanel.SetActive(true);
-            resultCount.text = "Count : " + data.count.ToString();
-            resultLevel.text = "Level : " + data.level.ToString();
+            resultCount.text = "Count : " + GameManager.Instance.playerData.count.ToString();
+            resultLevel.text = MatchServer.Instance.resultCode == 1 ? "WIN" : 
+                MatchServer.Instance.resultCode == 0 ? "DRAW" : "LOSE"; 
         };
+    }
+
+    public void EndEditInputField()
+    {
+        var coroutine = GameManager.Instance.ConnectServer(inputField.text);
+        StartCoroutine(coroutine);
+        inputField.gameObject.SetActive(false);
     }
 
     private void Awake()
     {
-        
         EventSetUp();
     }
 }

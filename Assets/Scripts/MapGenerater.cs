@@ -26,27 +26,6 @@ public class MapGenerater : MonoBehaviour
     public GameObject blockedNone;
     private List<float> probabilityTable = new List<float>{ 0.3f, 0.315f, 0.315f, 0.07f };
 
-    private string _mapData = "";
-    public string mapData 
-    { 
-        get { return _mapData; } 
-        set 
-        { 
-            if (!MatchServer.Instance.isSuperUser)
-            {
-                Debug.Log(value);
-                for (int i = _mapData.Length; i < value.Length; ++i)
-                {
-                    GenerateBlock(new Vector3(0, y, 0), (PlatType)int.Parse("" + value[i]));
-                    y += blockedAll.transform.localScale.y;
-                }
-
-                SendData();
-            }
-
-            _mapData = value;
-        } 
-    }
     private float y = 0; 
     public BSLibrary.Tween tween;
     public float jumpTime;
@@ -63,10 +42,9 @@ public class MapGenerater : MonoBehaviour
         get { return _stock; }
         set
         {
-            if (_stock > value && MatchServer.Instance.isSuperUser)
+            if (_stock > value)
             {
                 PlatType type = GenerateBlock(new Vector3(0, y, 0));
-                mapData += ((int)type).ToString();
                 y += blockedAll.transform.localScale.y;
                 _stock = value + 1;
                 return;
@@ -89,8 +67,6 @@ public class MapGenerater : MonoBehaviour
                 num <= probabilityTable.GetRange(0, 2).Sum() + probabilityTable[2] ? 2 :
                 num <= probabilityTable.GetRange(0, 3).Sum() + probabilityTable[3] ? 3 : 0);
         }
-
-        mapData += ((int)type).ToString();
         //mapData += ((int)type).ToString();
         obj = blocks[(int)type];
 
@@ -99,12 +75,13 @@ public class MapGenerater : MonoBehaviour
         return type;
     }
 
-    public void Init() // 장판들 초기 배치
+    public void Init(int seed) // 장판들 초기 배치
     {
-        
-        for (int j = transform.childCount - 1; j > 0; --j)
+        Random.InitState(seed);
+
+        for (int i = transform.childCount - 1; i >= 1; --i)
         {
-            Destroy(transform.GetChild(j).gameObject);
+            Destroy(transform.GetChild(i).gameObject);
         }
 
         transform.position = new Vector3(0, -1, 0);
@@ -120,23 +97,19 @@ public class MapGenerater : MonoBehaviour
         }
 
         stock = 15;
+        Debug.Log("initailize complete");
         //StartCoroutine("SendData");
     }
 
-    private void SendData()
+    private void SendUserData()
     {
-
-        Debug.Log(GameManager.Instance.isPlay);
-        Debug.Log(MatchServer.Instance.isSuperUser && MatchServer.Instance.onMatch);
-
-        string playerState = (player.animator.GetBool("IsRunning") ? "1" : "0") + (player.animator.GetBool("IsCollapse") ? "1" : "0");
-        string otherPlayerState = (otherPlayer.animator.GetBool("IsRunning") ? "1" : "0") + (otherPlayer.animator.GetBool("IsCollapse") ? "1" : "0");
-
-        if (MatchServer.Instance.isSuperUser && MatchServer.Instance.onMatch)
-            MatchServer.Instance.SendWindowData(mapData,
-                player, otherPlayer,
-                playerState, otherPlayerState);
+        MatchServer.Instance.SendUserData(player, otherPlayer);
         //yield return new WaitForSeconds(1.5f);
+    }
+
+    private void SendJumpData()
+    {
+        MatchServer.Instance.SendJumpData(player.transform.position.x, player.transform.eulerAngles.y, data.count);
     }
 
     private IEnumerator Jump()
@@ -144,9 +117,10 @@ public class MapGenerater : MonoBehaviour
         nowJumping = true;
         data.jumpStartEvent();
         tween.StartCoroutine();
-        SendData();
-        //SendData(playerState, otherPlayerState);
 
+        //SendUserData();
+        SendJumpData();
+        
         Vector3 beforePos = transform.position;
 
         while (tween.IsPlay)
@@ -160,7 +134,7 @@ public class MapGenerater : MonoBehaviour
 
         if (GameManager.Instance.isPlay) { data.count += 1; }
 
-        if (data.count > MatchServer.Instance.mapGenerater.otherPlayer.data.count) { stock--; }
+        if (data.count > GameManager.Instance.otherData.count) { stock--; }
         data.jumpEndEvent();
         nowJumping = false;
     }
@@ -177,6 +151,7 @@ public class MapGenerater : MonoBehaviour
         blocks.Add(blockedRight);
         blocks.Add(blockedNone);
 
+        MatchServer.Instance.StartGame += Init;
         //GameManager.Instance.gameStartEvent += Init;
     }
 
@@ -185,16 +160,10 @@ public class MapGenerater : MonoBehaviour
         if (Input.GetMouseButtonDown(0)) // 점프 (터치, 좌클릭) 시작 버튼 이기도 함.
         {
             Debug.Log("클릭");
-            if (!nowJumping && GameManager.Instance.isPlay && MatchServer.Instance.onMatch) 
+            if (!nowJumping && GameManager.Instance.isPlay && MatchServer.Instance.onMatch)
             {
-                if (MatchServer.Instance.isSuperUser) 
-                { 
-                    StartCoroutine("Jump"); 
-                }
-                else
-                {
-                    MatchServer.Instance.SendClickData();
-                }
+                var coroutine = Jump();
+                StartCoroutine(coroutine);
             }
         }
     }

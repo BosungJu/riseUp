@@ -11,13 +11,15 @@ public class Player : MonoBehaviour
     private float[] speedTable = { 1, 1.1f, 1.15f, 1.2f, 1.25f };
     private Vector3 direction;
     private float speed;
+    public int firstMove = 0;
 
     private void EventSetUp()
     {
-        data.levelUpEvent += LevelUpEvent;
+        //data.levelUpEvent += LevelUpEvent;
         data.jumpStartEvent += () => animator.SetBool("IsRunning", false);
         data.jumpEndEvent += () => animator.SetBool("IsRunning", true);
         GameManager.Instance.gameStartEvent += GameStartEvent;
+        GameManager.Instance.gameStartEvent += () => firstMove = 0;
     }
 
     // event function
@@ -32,6 +34,7 @@ public class Player : MonoBehaviour
     private void Collapse()
     {
         animator.SetBool("IsCollapse", true);
+        MatchServer.Instance.SendCollapse();
     }
 
     private void Start()
@@ -51,9 +54,18 @@ public class Player : MonoBehaviour
 
     void FixedUpdate()
     {
-        if (GameManager.Instance.isPlay && MatchServer.Instance.mapGenerater.mapData.Length != 0)
-        { 
+        if (MatchServer.Instance.isGameStart)
+        {
+            firstMove++;
             transform.Translate(direction * speed * Time.deltaTime * 2); 
+        }
+        if (firstMove == 1)
+        {
+            Debug.Log("enter send seedData");
+            if (MatchServer.Instance.isSuperUser)
+            {
+                MatchServer.Instance.SendSeedData();
+            }
         }
     }
 

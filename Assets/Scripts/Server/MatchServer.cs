@@ -29,13 +29,15 @@ public class MatchServer : Singleton<MatchServer>
     private SessionId mySessionID;
     private SessionId otherSessionID;
     private string nickname = "";
-    private string superUserID;
     public bool onMatch = false;
     public Player player;
     public OtherPlayer otherPlayer;
     public Text text;
     public string roomToken = "";
     public MapGenerater mapGenerater;
+    public Action<int> StartGame = null;
+    public bool isGameStart = false;
+    public int resultCode = 0;
 
     public void JoinMatchMakingServer()
     {
@@ -182,31 +184,43 @@ public class MatchServer : Singleton<MatchServer>
         }
     }
 
-    public void SendClickData()
+    public void SendJumpData(float x, float direction,int count)
     {
-        var data = DataParser.DataToJsonData<Protocol.JumpMessage>(new Protocol.JumpMessage(otherPlayer.transform.position.x));
+        var data = DataParser.DataToJsonData<Protocol.JumpMessage>(new Protocol.JumpMessage(x, direction, count));
 
         Backend.Match.SendDataToInGameRoom(data);
     }
 
-    public void SendWindowData
-        (
-        string map, Player player, OtherPlayer otherPlayer,
-        string userState, string otherState)
+    public void SendCollapse()
+    {
+        var data = DataParser.DataToJsonData<Protocol.Collapse>(new Protocol.Collapse(mySessionID, otherSessionID, player.data.count, otherPlayer.data.count));
+        Debug.Log("SendCollapse : " + isSuperUser);
+        Backend.Match.SendDataToInGameRoom(data);
+    }
+
+    public void SendUserData(Player player, OtherPlayer otherPlayer)
     {
 
-        Protocol.MapData message = new Protocol.MapData(new Protocol.UserMapData(
-            Encoding.UTF8.GetBytes(map),
+        Protocol.UserMassage message = new Protocol.UserMassage(
             player.transform.position.x,
             otherPlayer.transform.position.x,
             player.data.count,
             otherPlayer.data.count,
             (int)player.transform.eulerAngles.y,
-            (int)otherPlayer.transform.eulerAngles.y));
+            (int)otherPlayer.transform.eulerAngles.y);
 
-        var data = DataParser.DataToJsonData(message);
+        var data = DataParser.DataToJsonData<Protocol.UserMassage>(message);
 
         Backend.Match.SendDataToInGameRoom(data);
+    }
+
+    public void SendSeedData()
+    {
+        System.Random rand = new System.Random();
+        
+        var data = DataParser.DataToJsonData<Protocol.SeedMessage>(new Protocol.SeedMessage(rand.Next()));
+        Backend.Match.SendDataToInGameRoom(data);
+        mapGenerater.Init(DataParser.ReadJsonData<Protocol.SeedMessage>(data).seed);
     }
 
     private void MatchMakingHandler()
@@ -289,8 +303,9 @@ public class MatchServer : Singleton<MatchServer>
 
         Backend.Match.OnMatchInGameStart += () =>
         {
-            if (isSuperUser) { mapGenerater.Init(); }
-            Debug.Log("game start");
+            text.gameObject.SetActive(false);
+            isGameStart = true;
+            Debug.Log("game start : " + isGameStart);
         };
 
         Backend.Match.OnMatchRelay += (args) => 
@@ -307,7 +322,7 @@ public class MatchServer : Singleton<MatchServer>
             {
                 return;
             }
-            if (isSuperUser != true && args.From.SessionId == mySessionID)
+            if (args.From.SessionId == mySessionID && !isSuperUser)
             {
                 return;
             }
@@ -318,63 +333,90 @@ public class MatchServer : Singleton<MatchServer>
             {
                 case Protocol.Type.Jump:
                     // TODO other player jump
-                    if (isSuperUser && !otherPlayer.nowJumping) 
-                    {
-                        Debug.Log("jump");
-                        Protocol.JumpMessage jumpMessage = DataParser.ReadJsonData<Protocol.JumpMessage>(args.BinaryUserData);
-                        otherPlayer.PlayJump();
-                    }
+                    if (args.From.SessionId == mySessionID) return;
+                    Protocol.JumpMessage jumpMessage = DataParser.ReadJsonData<Protocol.JumpMessage>(args.BinaryUserData);
+
+                    otherPlayer.PlayJump(jumpMessage);
                     break;
                 case Protocol.Type.Collapse:
                     // TODO End Game
-                    if (isSuperUser)
-                    {
-                        MatchGameResult matchGameResult = new MatchGameResult();
-                        matchGameResult.m_winners = new List<SessionId>();
-                        matchGameResult.m_losers = new List<SessionId>();
-                        matchGameResult.m_draws = new List<SessionId>();
 
-                        if (player.data.count > otherPlayer.data.count && isSuperUser)
+
+                    Protocol.Collapse collapse = DataParser.ReadJsonData<Protocol.Collapse>(args.BinaryUserData);
+
+                    MatchGameResult matchGameResult = new MatchGameResult();
+                    matchGameResult.m_winners = new List<SessionId>();
+                    matchGameResult.m_losers = new List<SessionId>();
+                    matchGameResult.m_draws = new List<SessionId>();
+                    
+                    if (collapse.myCount > collapse.otherCount)
+                    {
+                        matchGameResult.m_winners.Add(mySessionID);
+                        matchGameResult.m_losers.Add(otherSessionID);
+                        if (collapse.mySessionID == mySessionID)
                         {
-                            matchGameResult.m_winners.Add(mySessionID);
-                            matchGameResult.m_losers.Add(otherSessionID);
-                        }
-                        else if (player.data.count < otherPlayer.data.count && isSuperUser)
-                        {
-                            matchGameResult.m_winners.Add(otherSessionID);
-                            matchGameResult.m_losers.Add(mySessionID);
+                            resultCode = 1;
                         }
                         else
                         {
-                            matchGameResult.m_draws.Add(mySessionID);
-                            matchGameResult.m_draws.Add(otherSessionID);
+                            resultCode = -1;
                         }
-                        Backend.Match.MatchEnd(matchGameResult);
-                        GameManager.Instance.EndGame();
                     }
+                    else if (collapse.myCount < collapse.otherCount)
+                    {
+                        matchGameResult.m_winners.Add(otherSessionID);
+                        matchGameResult.m_losers.Add(mySessionID);
+                        if (collapse.mySessionID == mySessionID)
+                        {
+                            resultCode = -1;
+                        }
+                        else
+                        {
+                            resultCode = 1;
+                        }
+                    }
+                    else
+                    {
+                        matchGameResult.m_draws.Add(mySessionID);
+                        matchGameResult.m_draws.Add(otherSessionID);
+                        resultCode = 0;
+                    }
+
+                    if (isSuperUser) Backend.Match.MatchEnd(matchGameResult);
+
+
                     break;
-                case Protocol.Type.MapData:
+                case Protocol.Type.UserData:
                     // TODO map 동기화 and player position 동기화
                     Debug.Log("get map data : " + isSuperUser);
                     if (!isSuperUser)
                     {
-                        Protocol.MapData mapData = JsonUtility.FromJson<Protocol.MapData>(Encoding.UTF8.GetString(args.BinaryUserData));
-                        Debug.Log(mapData.map);
-                        mapGenerater.mapData = Encoding.UTF8.GetString(mapData.map);
-                        player.transform.position = new Vector3(mapData.userPos_x, -1, 0);
+                        Protocol.UserMassage mapData = JsonUtility.FromJson<Protocol.UserMassage>(Encoding.UTF8.GetString(args.BinaryUserData));
                         otherPlayer.transform.position = new Vector3(
                             mapData.superUserPos_x,
-                            -1 + otherPlayer.plat.transform.localScale.y * (mapData.superUserCount - mapData.superUserCount),
+                            0,
                             0);
-                        mapGenerater.transform.position = new Vector3(0,
-                            -1 - mapGenerater.blockedAll.transform.localScale.y * mapData.userCount,
+                        otherPlayer.pivot.position = new Vector3(
+                            0,
+                            -1 + mapGenerater.blockedAll.transform.localScale.y * (mapData.userCount - mapData.superUserCount),
                             0);
+                        otherPlayer.transform.eulerAngles = new Vector3(0, mapData.superUserDirection, 0);
+                        player.transform.position = new Vector3(mapData.userPos_x, -1, 0);
+                        player.transform.eulerAngles = new Vector3(0, mapData.userDirection, 0);
                     }
                     break;
+                case Protocol.Type.Seed:
+                    Debug.Log("get seed");
+
+                    Protocol.SeedMessage seed = DataParser.ReadJsonData<Protocol.SeedMessage>(args.BinaryUserData);
+                    StartGame(seed.seed);
+
+                    break;
                 case Protocol.Type.GameStart:
-                    
+
                     break;
                 case Protocol.Type.GameEnd:
+                    // TODO show result window
                     break;
             }
 
@@ -388,11 +430,10 @@ public class MatchServer : Singleton<MatchServer>
 
         Backend.Match.OnMatchResult += (args) => // 게임이 완전히 끝났을때
         {
-            
-            
             if (args.ErrInfo == ErrorCode.Success)
             {
-
+                isGameStart = false;
+                GameManager.Instance.EndGame();
             }
         };
     }

@@ -8,7 +8,8 @@ namespace Protocol
     {
         Jump = 0,
         Collapse,
-        MapData,
+        UserData,
+        Seed,
 
         GameStart,
         GameEnd
@@ -27,47 +28,36 @@ namespace Protocol
     public class JumpMessage : Message
     {
         public float userPos_x;
+        public float userDirection;
+        public int count;
 
-        public JumpMessage(float userPos_x) : base(Type.Jump)
+        public JumpMessage(float userPos_x, float userDirection, int count) : base(Type.Jump)
         {
             this.userPos_x = userPos_x;
-        }
-    }
-
-    public class UserMapData
-    {
-        public byte[] map;
-
-        public float superUserPos_x;
-        public float userPos_x;
-
-        public int superUserCount;
-        public int userCount;
-
-        public int superUserDirection;
-        public int userDirection;
-
-        public UserMapData()
-        {
-
-        }
-
-        public UserMapData(byte[] map, float superUserPos_x, float userPos_x, int superUserCount, int userCount, int superUserDirection, int userDirection)
-        {
-            this.map = map;
-            this.superUserPos_x = superUserPos_x;
-            this.userPos_x = userPos_x;
-            this.superUserCount = superUserCount;
-            this.userCount = userCount;
-            this.superUserDirection = superUserDirection;
             this.userDirection = userDirection;
+            this.count = count;
         }
     }
 
-    public class MapData : Message
+    public class Collapse : Message
     {
-        public byte[] map;
+        public BackEnd.Tcp.SessionId mySessionID;
+        public BackEnd.Tcp.SessionId otherSessionID;
+        public int myCount;
+        public int otherCount;
 
+        public Collapse(BackEnd.Tcp.SessionId mySessionID, BackEnd.Tcp.SessionId otherSessionID, int myCount, int otherCount) : base(Type.Collapse)
+        {
+            this.mySessionID = mySessionID;
+            this.otherSessionID = otherSessionID;
+            this.myCount = myCount;
+            this.otherCount = otherCount;
+        }
+    }
+
+
+    public class UserMassage : Message
+    {
         public float superUserPos_x;
         public float userPos_x;
 
@@ -77,15 +67,24 @@ namespace Protocol
         public int superUserDirection;
         public int userDirection;
 
-        public MapData(UserMapData userMapData) : base(Type.MapData)
+        public UserMassage(float superUserPos_x, float userPos_x, int superUserCount, int userCount, int superUserDirection, int userDirection) : base(Type.UserData)
         {
-            this.map = userMapData.map;
-            this.superUserPos_x = userMapData.superUserPos_x;
-            this.superUserCount = userMapData.superUserCount;
-            this.userPos_x = userMapData.userPos_x;
-            this.userCount = userMapData.userCount;
-            this.superUserDirection = userMapData.superUserDirection;
-            this.userDirection = userMapData.userDirection;
+            this.superUserPos_x = superUserPos_x;
+            this.userPos_x = userPos_x;
+            this.superUserCount = superUserCount;
+            this.userCount = userCount;
+            this.superUserDirection = superUserDirection;
+            this.userDirection = userDirection;
+        }
+    }
+
+    public class SeedMessage : Message
+    {
+        public int seed;
+
+        public SeedMessage(int seed) : base(Type.Seed)
+        {
+            this.seed = seed;
         }
     }
 }
