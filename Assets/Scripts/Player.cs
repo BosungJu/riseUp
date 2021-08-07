@@ -51,7 +51,7 @@ public class Player : MonoBehaviour
 
     void FixedUpdate()
     {
-        if (GameManager.Instance.isPlay && MatchServer.Instance.mapGenerater.mapData != "") { transform.Translate(direction * speed * Time.deltaTime * 2); }
+        if (GameManager.Instance.isPlay && MatchServer.Instance.mapGenerater.mapData.Count != 0) { transform.Translate(direction * speed * Time.deltaTime * 2); }
     }
 
     private void OnCollisionEnter2D(Collision2D collision)

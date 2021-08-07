@@ -191,11 +191,11 @@ public class MatchServer : Singleton<MatchServer>
 
     public void SendWindowData
         (
-        string map, Player player, OtherPlayer otherPlayer,
+        List<int> map, Player player, OtherPlayer otherPlayer,
         string userState, string otherState)
     {
 
-        Protocol.MapData message = new Protocol.MapData(map, player.transform.position.x,
+        Protocol.MapData message = new Protocol.MapData(map.ToArray(), player.transform.position.x,
             otherPlayer.transform.position.x, player.data.count, otherPlayer.data.count,
             (int)player.transform.eulerAngles.y, (int)otherPlayer.transform.eulerAngles.y);
 
@@ -313,9 +313,10 @@ public class MatchServer : Singleton<MatchServer>
             {
                 case Protocol.Type.Jump:
                     // TODO other player jump
-                    Debug.Log("jump");
                     if (isSuperUser && !otherPlayer.nowJumping) 
                     {
+                        Debug.Log("jump");
+                        Protocol.JumpMessage jumpMessage = DataParser.ReadJsonData<Protocol.JumpMessage>(args.BinaryUserData);
                         otherPlayer.PlayJump();
                     }
                     break;
@@ -352,9 +353,12 @@ public class MatchServer : Singleton<MatchServer>
                     Debug.Log("get map data : " + isSuperUser);
                     if (!isSuperUser)
                     {
-                        Protocol.MapData mapData = (Protocol.MapData)msg;
-                        Debug.Log(mapData.map);
-                        mapGenerater.mapData = mapData.map;
+                        Protocol.MapData mapData = DataParser.ReadJsonData<Protocol.MapData>(args.BinaryUserData);
+                        Debug.Log(mapData.userCount);
+                        //Debug.Log("map code : " + mapData.map);
+                        List<int> buf = new List<int>(mapData.map);
+                        buf.GetRange(mapGenerater.mapData.Count, buf.Count - mapGenerater.mapData.Count);
+                        mapGenerater.mapData.AddRange(buf);
                         player.transform.position = new Vector3(mapData.userPos_x, -1, 0);
                         otherPlayer.transform.position = new Vector3(
                             mapData.superUserPos_x,

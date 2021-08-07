@@ -36,7 +36,7 @@ namespace Protocol
 
     public class MapData : Message
     {
-        public string map;
+        public int[] map;
 
         public float superUserPos_x;
         public float userPos_x;
@@ -47,7 +47,7 @@ namespace Protocol
         public int superUserDirection;
         public int userDirection;
 
-        public MapData(string map, float superUserPos_x, float userPos_x, int superUserCount, int userCount, int superUserDirection, int userDirection) : base(Type.MapData)
+        public MapData(int[] map, float superUserPos_x, float userPos_x, int superUserCount, int userCount, int superUserDirection, int userDirection) : base(Type.MapData)
         {
             this.map = map;
             this.superUserPos_x = superUserPos_x;

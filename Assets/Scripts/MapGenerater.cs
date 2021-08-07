@@ -26,15 +26,16 @@ public class MapGenerater : MonoBehaviour
     public GameObject blockedNone;
     private List<float> probabilityTable = new List<float>{ 0.3f, 0.315f, 0.315f, 0.07f };
 
-    private string _mapData = "";
-    public string mapData 
+    private List<int> _mapData = new List<int>();
+    public List<int> mapData 
     { 
         get { return _mapData; } 
         set 
         { 
             if (!MatchServer.Instance.isSuperUser)
             {
-                for (int i = _mapData.Length; i < value.Length; ++i)
+                Debug.Log(value);
+                for (int i = _mapData.Count; i < value.Count; ++i)
                 {
                     GenerateBlock(new Vector3(0, y, 0), (PlatType)int.Parse("" + value[i]));
                     y += blockedAll.transform.localScale.y;
@@ -63,7 +64,7 @@ public class MapGenerater : MonoBehaviour
             if (_stock > value && MatchServer.Instance.isSuperUser)
             {
                 PlatType type = GenerateBlock(new Vector3(0, y, 0));
-                mapData += ((int)type).ToString();
+                mapData.Add((int)type);
                 y += blockedAll.transform.localScale.y;
                 _stock = value + 1;
                 return;
@@ -87,7 +88,8 @@ public class MapGenerater : MonoBehaviour
                 num <= probabilityTable.GetRange(0, 3).Sum() + probabilityTable[3] ? 3 : 0);
         }
 
-        mapData += ((int)type).ToString();
+        mapData.Add((int)type);
+        //mapData += ((int)type).ToString();
         obj = blocks[(int)type];
 
         Instantiate(obj, transform).transform.position += pos;

@@ -49,7 +49,7 @@ public class OtherPlayer : MonoBehaviour
 
     void FixedUpdate()
     {
-        if (GameManager.Instance.isPlay && MatchServer.Instance.mapGenerater.mapData != "") 
+        if (GameManager.Instance.isPlay && MatchServer.Instance.mapGenerater.mapData.Count != 0) 
         {
             transform.Translate(direction * speed * Time.deltaTime * 2);
         }
@@ -66,7 +66,7 @@ public class OtherPlayer : MonoBehaviour
 
     public void PlayJump()
     {
-        StartCoroutine("Jump");
+        if (!nowJumping) StartCoroutine("Jump");
     }
 
     private IEnumerator Jump()
@@ -77,10 +77,10 @@ public class OtherPlayer : MonoBehaviour
 
         while (tween.IsPlay)
         {
-            transform.position = beforePos - new Vector3(0, plat.transform.localScale.y * tween.ReturnValueToFloat, 0);
+            transform.position = beforePos + new Vector3(0, plat.transform.localScale.y * tween.ReturnValueToFloat, 0);
             yield return new WaitForFixedUpdate();
         }
-        transform.position = beforePos - new Vector3(0, plat.transform.localScale.y, 0);
+        transform.position = beforePos + new Vector3(0, plat.transform.localScale.y, 0);
 
         yield return new WaitForSeconds(0.05f);
         if (GameManager.Instance.isPlay) { data.count++; }
