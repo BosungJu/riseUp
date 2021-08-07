@@ -360,14 +360,14 @@ public class MatchServer : Singleton<MatchServer>
                     {
                         Protocol.MapData mapData = JsonUtility.FromJson<Protocol.MapData>(Encoding.UTF8.GetString(args.BinaryUserData));
                         mapGenerater.mapData = Encoding.UTF8.GetString(mapData.map);
-                        //player.transform.position = new Vector3(mapData.userPos_x, -1, 0);
-                        //otherPlayer.transform.position = new Vector3(
-                        //    mapData.superUserPos_x,
-                        //    -1 + otherPlayer.plat.transform.localScale.y * (mapData.superUserCount - mapData.superUserCount),
-                        //    0);
-                        //mapGenerater.transform.position = new Vector3(0,
-                        //    -1 - mapGenerater.blockedAll.transform.localScale.y * mapData.userCount,
-                        //    0);
+                        player.transform.position = new Vector3(mapData.userPos_x, -1, 0);
+                        otherPlayer.transform.position = new Vector3(
+                            mapData.superUserPos_x,
+                            -1 + otherPlayer.plat.transform.localScale.y * (mapData.superUserCount - mapData.superUserCount),
+                            0);
+                        mapGenerater.transform.position = new Vector3(0,
+                            -1 - mapGenerater.blockedAll.transform.localScale.y * mapData.userCount,
+                            0);
                     }
                     break;
                 case Protocol.Type.GameStart:
