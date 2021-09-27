@@ -52,7 +52,7 @@ public class ServerManager : Singleton<ServerManager>
             // 서버시간 획득
             Debug.Log(Backend.Utils.GetServerTime());
 
-            DeleteGuestInfo();
+            //DeleteGuestInfo();
 
             
             /*
@@ -726,6 +726,9 @@ public class ServerManager : Singleton<ServerManager>
             if (!result)
             {
                 Debug.Log("guest login error : " + error);
+
+                
+
                 return;
             }
 
@@ -751,6 +754,13 @@ public class ServerManager : Singleton<ServerManager>
             Debug.Log("게스트 로그인 실패\n" + callback);
             func(false, string.Format("statusCode : {0}\nErrorCode : {1}\nMessage : {2}",
                 callback.GetStatusCode(), callback.GetErrorCode(), callback.GetMessage()));
+            
+            if (callback.GetStatusCode() == "401")
+            {
+                DeleteGuestInfo();
+                AGuestLogin();
+                GuestLogin();
+            }
         });
         
         //Debug.Log(bro);
@@ -762,6 +772,16 @@ public class ServerManager : Singleton<ServerManager>
 
         Backend.BMember.GuestLogin( callback =>
         {
+            if (callback.IsSuccess() == false)
+            {
+                Debug.Log(callback);
+
+                if (callback.GetStatusCode() == "401")
+                {
+                    DeleteGuestInfo();
+                    AGuestLogin();
+                }
+            }
             LoadChart();
             Debug.Log(callback);
         });

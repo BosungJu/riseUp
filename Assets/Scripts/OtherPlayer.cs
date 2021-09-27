@@ -31,6 +31,7 @@ public class OtherPlayer : MonoBehaviour
     private void Collapse()
     {
         animator.SetBool("IsCollapse", true);
+        MatchServer.Instance.SendCollapse();
     }
 
 
@@ -43,7 +44,8 @@ public class OtherPlayer : MonoBehaviour
     {
         animator.SetBool("IsRunning", true);
         animator.SetBool("IsCollapse", false);
-        transform.position = new Vector3(0, -1, 0);
+        pivot.position = new Vector3(0, 0, 0);
+        transform.position = new Vector3(0, 0, 0);
         transform.eulerAngles = new Vector3(0, 0, 0);
         direction = Vector3.left;
         speed = speedTable[0];

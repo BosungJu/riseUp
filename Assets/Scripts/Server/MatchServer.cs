@@ -220,7 +220,7 @@ public class MatchServer : Singleton<MatchServer>
         
         var data = DataParser.DataToJsonData<Protocol.SeedMessage>(new Protocol.SeedMessage(rand.Next()));
         Backend.Match.SendDataToInGameRoom(data);
-        mapGenerater.Init(DataParser.ReadJsonData<Protocol.SeedMessage>(data).seed);
+        //mapGenerater.Init(DataParser.ReadJsonData<Protocol.SeedMessage>(data).seed);
     }
 
     private void MatchMakingHandler()

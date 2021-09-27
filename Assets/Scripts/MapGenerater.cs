@@ -77,6 +77,7 @@ public class MapGenerater : MonoBehaviour
 
     public void Init(int seed) // 장판들 초기 배치
     {
+        transform.position = new Vector3(0, -1, 0);
         Random.InitState(seed);
 
         for (int i = transform.childCount - 1; i >= 1; --i)
